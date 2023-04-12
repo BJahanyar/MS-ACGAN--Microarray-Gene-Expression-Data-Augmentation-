@@ -34,7 +34,8 @@ class Metrics(BaseModel):
 
 
 class Classification:
-    def __init__(self, name: str, save_model: bool = True):
+    def __init__(self, name: str, save_model: bool = True, calibrate: bool = False):
+        self.calibrate = calibrate
         self.name = name
         self._algorithm = None
         self._train_data = None
@@ -48,6 +49,14 @@ class Classification:
         assert hasattr(algorithm, 'score')
         assert hasattr(algorithm, 'predict')
         self._algorithm = algorithm
+        if self.calibrate:
+            self._calibrate_model()
+
+    def _calibrate_model(self):
+        from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+        calibrated = CalibratedClassifierCV(self._algorithm, method='sigmoid')
+        print('calibrate model')
+        self._algorithm = calibrated
 
     def set_dataset(
             self,
@@ -111,19 +120,19 @@ def validation_with_cls(cls, x_test, y_test):
     print(f"confusion matrix:\n{confusion_matrix(y_test, y_pred)}")
 
 
-def logistic_regression_classifier():
+def logistic_regression_classifier(calibrate: bool = False):
     x_train, y_train, x_test, y_test = load_train_test_data(train_cfg.TRAIN_DATA_PATH,
                                                             train_cfg.TEST_DATA_PATH,
                                                             features.SELECTED_FEATURES_64_8_202)
 
     lr = LogisticRegression(max_iter=1000)
-    cls = Classification(model.LR_VALIDATION_MODEL, save_model=True)
+    cls = Classification(model.LR_VALIDATION_MODEL, save_model=True, calibrate=calibrate)
     cls.set_dataset((x_train, y_train), (x_test, y_test))
     cls.set_algorithm(lr)
     cls.fit()
 
 
-def nn_classifier():
+def nn_classifier(calibrate: bool = False):
     x_train, y_train, x_test, y_test = load_train_test_data(train_cfg.TRAIN_DATA_PATH,
                                                             train_cfg.TEST_DATA_PATH,
                                                             features.SELECTED_FEATURES_64_8_202)
@@ -139,7 +148,7 @@ def nn_classifier():
         verbose=0,
     )
 
-    cls = Classification(model.NN_VALIDATION_MODEL, save_model=True)
+    cls = Classification(model.NN_VALIDATION_MODEL, save_model=True, calibrate=calibrate)
     cls.set_dataset((x_train, y_train), (x_test, y_test))
     cls.set_algorithm(net)
     cls.fit()
@@ -174,7 +183,7 @@ def grid_search_nn_classifier():
     print("best score: {:.3f}, best params: {}".format(gs.best_score_, gs.best_params_))
 
 
-def cnn1d_classifier():
+def cnn1d_classifier(calibrate: bool=False):
     x_train, y_train, x_test, y_test = load_train_test_data(train_cfg.TRAIN_DATA_PATH,
                                                             train_cfg.TEST_DATA_PATH,
                                                             features.SELECTED_FEATURES_64_8_202)
@@ -191,31 +200,31 @@ def cnn1d_classifier():
         verbose=0,
     )
 
-    cls = Classification(model.CNN1D_VALIDATION_MODEL, save_model=True)
+    cls = Classification(model.CNN1D_VALIDATION_MODEL, save_model=True, calibrate=calibrate)
     cls.set_dataset((x_train, y_train), (x_test, y_test))
     cls.set_algorithm(net)
     cls.fit()
 
 
-def knn_classifier():
+def knn_classifier(calibrate):
     x_train, y_train, x_test, y_test = load_train_test_data(train_cfg.TRAIN_DATA_PATH,
                                                             train_cfg.TEST_DATA_PATH,
                                                             features.SELECTED_FEATURES_64_8_202)
 
-    cls = Classification(model.KNN_VALIDATION_MODEL, save_model=True)
+    cls = Classification(model.KNN_VALIDATION_MODEL, save_model=True, calibrate=calibrate)
     cls.set_dataset((x_train, y_train), (x_test, y_test))
     cls.set_algorithm(KNeighborsClassifier())
     cls.fit()
 
 
-def svm_classifier():
+def svm_classifier(calibrate: bool = False):
     x_train, y_train, x_test, y_test = load_train_test_data(train_cfg.TRAIN_DATA_PATH,
                                                             train_cfg.TEST_DATA_PATH,
                                                             features.SELECTED_FEATURES_64_8_202)
 
-    cls = Classification(model.SVC_VALIDATION_MODEL, save_model=True)
+    cls = Classification(model.SVC_VALIDATION_MODEL, save_model=True, calibrate=calibrate)
     cls.set_dataset((x_train, y_train), (x_test, y_test))
-    cls.set_algorithm(SVC())
+    cls.set_algorithm(SVC(probability=True))
     cls.fit()
 
 
